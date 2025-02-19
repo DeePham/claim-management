@@ -31,7 +31,25 @@ body {
   }
 }
 
-/* AntDesign */
+/* Finance Page */
 .ant-form-item-label > label.ant-form-item-required::before {
   content: none !important;
+}
+
+.ant-pagination-item-active {
+  background-color: #1890ff !important;
+  border-color: #1890ff !important;
+}
+
+.ant-pagination-item-active a {
+  color: white !important;
+}
+
+.ant-pagination-item-active:hover {
+  background-color: #40a9ff !important;
+  border-color: #40a9ff !important;
+}
+
+.ant-pagination-item-active:hover a {
+  color: white !important;
 }
