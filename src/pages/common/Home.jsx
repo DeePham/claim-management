@@ -1,14 +1,11 @@
 import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthProvider";
 import { IoIosLink } from "react-icons/io";
 import { FaHashtag } from "react-icons/fa";
-import { ARTICLES } from "../../constants/articles";
+import { ARTICLES } from "@/constants/articles";
 
 const Home = () => {
-  const { user } = useAuth();
-
   return (
-    <div className="home-page">
+    <div className="flex flex-col gap-4 p-6">
       <Header />
       <ClaimArticles />
     </div>
@@ -17,10 +14,10 @@ const Home = () => {
 
 function Header() {
   return (
-    <div className="pt-4 pb-4">
-      <div className="flex items-center">
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
         <svg
-          className="w- mr-2 h-9 text-gray-700"
+          className="text-muted-foreground h-6 w-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -33,9 +30,9 @@ function Header() {
             d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
           ></path>
         </svg>
-        <h1 className="text-4xl font-bold text-gray-900">Home</h1>
+        <h2 className="text-2xl font-semibold">Home</h2>
       </div>
-      <p className="mt-2 text-gray-700 italic">
+      <p className="text-muted-foreground">
         Welcome to our claims management system. Stay informed about the latest
         claim processes and tips.
       </p>
@@ -51,40 +48,43 @@ function ClaimArticles() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="space-y-6">
       {ARTICLES.slice(0, visibleCount).map((article, index) => (
         <Articles key={index} article={article} />
       ))}
 
-      {visibleCount < ARTICLES.length ? (
-        <ButtonAction onClick={handleReadMore}>Read more</ButtonAction>
-      ) : (
-        <p className="w mx-auto text-center text-gray-500">
-          No more articles to load.
-        </p>
-      )}
+      <div className="flex justify-center">
+        {visibleCount < ARTICLES.length ? (
+          <ButtonAction onClick={handleReadMore}>Read more</ButtonAction>
+        ) : (
+          <p className="text-muted-foreground">No more articles to load.</p>
+        )}
+      </div>
     </div>
   );
 }
 
 function Articles({ article }) {
   return (
-    <div className="mb-8 w-full">
-      <h2 className="flex cursor-pointer items-center gap-2 text-xl font-bold">
-        <FaHashtag className="inline text-gray-500" />
-        <p>{article.title}</p>
+    <div className="">
+      <div className="space-y-4">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-semibold">
+            <FaHashtag className="text-muted-foreground" />
+            <span>{article.title}</span>
+            <IoIosLink className="text-muted-foreground" />
+          </h3>
+          <hr className="border-border mt-2 w-[30%]" />
+        </div>
 
-        <IoIosLink className="inline text-gray-500" />
-      </h2>
-      <hr className="mt-1 mb-3 w-[30%] border-gray-300" />
+        <p className="text-muted-foreground">{article.content}</p>
 
-      <p className="mb-3 text-gray-700">{article.content}</p>
-
-      <img
-        src={article.image}
-        alt={article.title}
-        className="h-64 w-full rounded-md object-cover"
-      />
+        <img
+          src={article.image}
+          alt={article.title}
+          className="h-96 w-full rounded-md object-cover"
+        />
+      </div>
     </div>
   );
 }
@@ -93,7 +93,7 @@ function ButtonAction({ children, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="mt-4 cursor-pointer rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-900"
+      className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 transition-colors"
     >
       {children}
     </button>

@@ -16,9 +16,6 @@ import Claimer from "@/routes/Claimer";
 import Finance from "@/routes/Finance";
 import Approver from "@/routes/Approver";
 import Administrator from "@/routes/Administrator";
-import ProjectManagement from "./pages/admin/ProjectManagement";
-import StaffManagement from "./pages/admin/StaffManagement";
-import AdminClaimer from "./pages/admin/AdminClaimer";
 
 const App = () => {
   const { user } = useAuth();
