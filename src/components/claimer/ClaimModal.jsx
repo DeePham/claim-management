@@ -59,6 +59,8 @@ export const ClaimModal = ({
           totalWorking,
         });
 
+        console.log(newClaim);
+
         setIsModalVisible(false);
         form.resetFields();
         api.success({
@@ -66,7 +68,14 @@ export const ClaimModal = ({
           description: "Claim created successfully!",
           duration: 3,
         });
-        onSuccess?.(newClaim);
+        onSuccess?.({
+          ...newClaim,
+          id: newClaim.id,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          totalWorking,
+          status: "Pending",
+        });
       }
     } catch (error) {
       if (!error.errorFields) {
@@ -105,7 +114,14 @@ export const ClaimModal = ({
         description: "Draft saved successfully!",
         duration: 3,
       });
-      onSuccess?.(newDraft);
+      onSuccess?.({
+        ...newDraft,
+        id: newDraft.id,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        totalWorking,
+        status: "Draft",
+      });
     } catch (error) {
       api.error({
         message: "Error",
@@ -144,44 +160,32 @@ export const ClaimModal = ({
             <Form.Item
               label="Staff Name"
               name="staffName"
+              initialValue={staffInfo?.name}
               rules={[
                 { required: true, message: "Please input the staff name!" },
               ]}
             >
-              <Input
-                value={staffInfo?.name || ""}
-                disabled
-                className="w-50 md:w-1/2"
-                style={{ color: "inherit" }}
-              />
+              <Input disabled className="w-50 md:w-1/2" />
             </Form.Item>
             <Form.Item
               label="Staff ID"
               name="staffId"
+              initialValue={staffInfo?.uid}
               rules={[
                 { required: true, message: "Please input the staff ID!" },
               ]}
             >
-              <Input
-                value={staffInfo?.uid || ""}
-                disabled
-                className="w-full md:w-1/2"
-                style={{ color: "inherit" }}
-              />
+              <Input disabled className="w-full md:w-1/2" />
             </Form.Item>
             <Form.Item
               label="Staff Department"
               name="staffDepartment"
+              initialValue={staffInfo?.department}
               rules={[
                 { required: true, message: "Please input the staff ID!" },
               ]}
             >
-              <Input
-                value={staffInfo?.department || ""}
-                disabled
-                className="w-full md:w-1/2"
-                style={{ color: "inherit" }}
-              />
+              <Input disabled className="w-full md:w-1/2" />
             </Form.Item>
             <Form.Item
               label="Project Name"

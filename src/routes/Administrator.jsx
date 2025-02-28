@@ -10,7 +10,7 @@ const Administrator = () => {
     <Routes>
       <Route path="projects" element={<ProjectManagement />} />
       <Route path="staffs" element={<StaffManagement />} />
-      <Route path="claimer" element={<AdminClaimer/>} />
+      <Route path="claims" element={<AdminClaimer />} />
     </Routes>
   );
 };

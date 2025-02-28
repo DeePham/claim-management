@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Table, Tag, Button, Dropdown, Modal, Form, message } from "antd";
-import { DUMMY_CLAIMS } from "@/constants/claimer";
 import { STATUS_COLORS } from "@/constants/common";
 import { Delete, Edit, Eye, Send, MoreHorizontal } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -102,20 +101,24 @@ const ViewClaim = () => {
   };
 
   const handleClaimSuccess = (newClaim) => {
-    if (
-      statusParam &&
-      statusParam.toLowerCase() !== newClaim.status.toLowerCase()
-    ) {
-      return;
-    }
+    console.log(newClaim);
 
-    setDataSource((prev) => [
-      {
-        ...newClaim,
-        key: newClaim.id,
-      },
-      ...prev,
-    ]);
+    // if (
+    //   statusParam &&
+    //   statusParam.toLowerCase() !== newClaim.status.toLowerCase()
+    // ) {
+    //   return;
+    // }
+
+
+    // setDataSource((prev) => [
+    //   {
+    //     ...newClaim,
+    //     key: newClaim.id,
+    //     projectDuration: [dayjs(newClaim.startDate), dayjs(newClaim.endDate)],
+    //   },
+    //   ...prev,
+    // ]);
   };
 
   const getActionItems = (record) => {

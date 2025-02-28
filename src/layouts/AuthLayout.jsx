@@ -9,7 +9,7 @@ const BaseLayout = () => {
       <div className="flex items-center justify-center px-5">
         <Outlet />
       </div>
-      <div className="bg-muted-foreground hidden md:block">
+      <div className="bg-muted-foreground/20 hidden md:block">
         <img
           src={AuthBanner}
           alt="Auth Banner"
