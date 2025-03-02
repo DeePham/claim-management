@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from "react";
-import { Table, Tag, Button, Dropdown, Modal } from "antd";
+import { Table, Tag, Button, Dropdown, Modal, message } from "antd";
 import { Eye, Printer, DollarSign, MoreHorizontal } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { DUMMY_CLAIMS } from "@/constants/finance";
 import { STATUS_COLORS } from "@/constants/common";
+import { useClaims } from "@/hooks/queries/claims";
+import { useUpdateClaimStatus } from "@/hooks/queries/claims";
 
 const FinancePage = () => {
   const [searchParams] = useSearchParams();
   const statusParam = searchParams.get("status");
-  const [dataSource, setDataSource] = useState(DUMMY_CLAIMS);
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const { data: claims = [], isLoading } = useClaims(
+    ["Approved", "Paid"],
+    statusParam,
+  );
+
+  const [dataSource, setDataSource] = useState([]);
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printingClaim, setPrintingClaim] = useState(null);
+  const updateStatusMutation = useUpdateClaimStatus();
 
   const [pagination, setPagination] = useState({
     current: 1,
@@ -20,32 +29,29 @@ const FinancePage = () => {
   });
 
   useEffect(() => {
-    if (statusParam) {
-      setDataSource(
-        DUMMY_CLAIMS.filter(
-          (item) => item.status.toLowerCase() === statusParam.toLowerCase(),
-        ),
-      );
-    } else {
-      setDataSource(DUMMY_CLAIMS);
-    }
-  }, [statusParam]);
+    setDataSource(claims);
+  }, [claims]);
 
   const handlePaid = (record) => {
     setSelectedClaim(record);
     setIsModalOpen(true);
   };
 
-  const handleOk = () => {
+  const handleOk = async () => {
     if (selectedClaim) {
-      setDataSource((prev) =>
-        prev.map((item) =>
-          item.id === selectedClaim.id ? { ...item, status: "Paid" } : item,
-        ),
-      );
+      try {
+        await updateStatusMutation.mutateAsync({
+          id: selectedClaim.id,
+          status: "Paid",
+        });
+
+        messageApi.success("Payment marked as successful");
+        setIsModalOpen(false);
+        setSelectedClaim(null);
+      } catch (error) {
+        messageApi.error("Failed to update payment status");
+      }
     }
-    setIsModalOpen(false);
-    setSelectedClaim(null);
   };
 
   const handlePrintClick = (record) => {
@@ -269,7 +275,9 @@ const FinancePage = () => {
                   </tr>
                   <tr>
                     <td className="text-muted-foreground py-1">Total Hours:</td>
-                    <td className="font-medium">{printingClaim.totalWorking} hours</td>
+                    <td className="font-medium">
+                      {printingClaim.totalWorking} hours
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -319,7 +327,9 @@ const FinancePage = () => {
 
   return (
     <div className="flex flex-col gap-4 p-6">
+      {contextHolder}
       <Table
+        loading={isLoading || updateStatusMutation.isPending}
         size="small"
         columns={columns}
         dataSource={dataSource}
@@ -334,11 +344,15 @@ const FinancePage = () => {
         title="Confirm Payment"
         open={isModalOpen}
         onOk={handleOk}
-        onCancel={() => setIsModalOpen(false)}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setSelectedClaim(null);
+        }}
         okText="Confirm"
         cancelText="Cancel"
+        confirmLoading={updateStatusMutation.isPending}
       >
-        <p>Are you sure you want to mark claim #{selectedClaim?.id} as paid?</p>
+        <p>Are you sure you want to mark this claim as paid?</p>
       </Modal>
 
       <Modal
@@ -352,9 +366,9 @@ const FinancePage = () => {
           <Button key="cancel" onClick={() => setIsPrintModalOpen(false)}>
             Cancel
           </Button>,
-          <Button 
-            key="print" 
-            type="primary" 
+          <Button
+            key="print"
+            type="primary"
             onClick={handlePrint}
             disabled={!printingClaim}
           >
@@ -365,7 +379,6 @@ const FinancePage = () => {
       >
         <PrintComponent />
       </Modal>
-
     </div>
   );
 };

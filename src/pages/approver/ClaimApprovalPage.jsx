@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Tag, Button, Dropdown, Modal } from "antd"; // Add Modal
+import { Table, Tag, Button, Dropdown, Modal, message } from "antd"; // Add message
 import { DUMMY_CLAIMS } from "@/constants/approver";
 import { STATUS_COLORS } from "@/constants/common";
 import {
@@ -10,15 +10,25 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { useClaims } from "@/hooks/queries/claims";
+import { useUpdateClaimStatus } from "@/hooks/queries/claims";
 
 const ClaimApprovalPage = () => {
   const [searchParams] = useSearchParams();
   const statusParam = searchParams.get("status");
-  const [dataSource, setDataSource] = useState(DUMMY_CLAIMS);
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const { data: claims = [], isLoading } = useClaims(
+    ["Pending", "Approved"],
+    statusParam,
+  );
+
+  const [dataSource, setDataSource] = useState([]);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const updateStatusMutation = useUpdateClaimStatus();
 
   const [pagination, setPagination] = useState({
     current: 1,
@@ -26,24 +36,8 @@ const ClaimApprovalPage = () => {
   });
 
   useEffect(() => {
-    if (statusParam) {
-      setDataSource(
-        DUMMY_CLAIMS.filter(
-          (item) => item.status.toLowerCase() === statusParam.toLowerCase(),
-        ),
-      );
-    } else {
-      setDataSource(DUMMY_CLAIMS);
-    }
-  }, [statusParam]);
-
-  const handleStatusChange = (record, newStatus) => {
-    setDataSource((prev) =>
-      prev.map((item) =>
-        item.id === record.id ? { ...item, status: newStatus } : item,
-      ),
-    );
-  };
+    setDataSource(claims);
+  }, [claims]);
 
   const handleView = (record) => {
     setSelectedClaim(record);
@@ -56,18 +50,27 @@ const ClaimApprovalPage = () => {
     setConfirmModalVisible(true);
   };
 
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     if (confirmAction && selectedClaim) {
       const statusMap = {
         approve: "Approved",
         reject: "Rejected",
-        return: "Returned",
+        return: "Draft", // Trả về trạng thái Draft để claimer có thể chỉnh sửa
       };
 
-      handleStatusChange(selectedClaim, statusMap[confirmAction]);
-      setConfirmModalVisible(false);
-      setSelectedClaim(null);
-      setConfirmAction(null);
+      try {
+        await updateStatusMutation.mutateAsync({
+          id: selectedClaim.id,
+          status: statusMap[confirmAction],
+        });
+
+        messageApi.success(`Claim ${confirmAction}ed successfully`);
+        setConfirmModalVisible(false);
+        setSelectedClaim(null);
+        setConfirmAction(null);
+      } catch (error) {
+        messageApi.error(`Failed to ${confirmAction} claim`);
+      }
     }
   };
 
@@ -184,7 +187,9 @@ const ClaimApprovalPage = () => {
 
   return (
     <div className="flex flex-col gap-4 p-6">
+      {contextHolder}
       <Table
+        loading={isLoading || updateStatusMutation.isPending}
         size="small"
         columns={columns}
         dataSource={dataSource}
@@ -245,7 +250,6 @@ const ClaimApprovalPage = () => {
         )}
       </Modal>
 
-      {/* Confirmation Modal */}
       <Modal
         title="Confirm Action"
         open={confirmModalVisible}
@@ -257,12 +261,25 @@ const ClaimApprovalPage = () => {
         }}
         okText="Confirm"
         cancelText="Cancel"
-        okButtonProps={{ danger: confirmAction === ("reject" || "return") }}
+        okButtonProps={{
+          danger: confirmAction === "reject" || confirmAction === "return",
+          loading: updateStatusMutation.isPending,
+        }}
       >
         <p>
           Are you sure you want to {confirmAction} this claim from{" "}
           {selectedClaim?.staffName}?
         </p>
+        {confirmAction === "reject" && (
+          <p className="text-muted-foreground">
+            This action will reject the claim and notify the claimer.
+          </p>
+        )}
+        {confirmAction === "return" && (
+          <p className="text-muted-foreground">
+            This action will return the claim to draft status for revision.
+          </p>
+        )}
       </Modal>
     </div>
   );

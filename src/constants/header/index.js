@@ -60,18 +60,13 @@ export const HEADER_LINKS = [
       menu: [
         {
           key: "1",
-          label: "For My Vetting",
+          label: "Pending",
           to: "approver/claims?status=pending",
         },
         {
           key: "2",
           label: "Approved",
           to: "approver/claims?status=approved",
-        },
-        {
-          key: "3",
-          label: "Paid",
-          to: "approver/claims?status=paid",
         },
       ],
     },
