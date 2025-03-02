@@ -1,13 +1,34 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { IoIosLink } from "react-icons/io";
 import { FaHashtag } from "react-icons/fa";
-import { ARTICLES } from "@/constants/articles";
+import { newsService } from "../../services/homepage";
 
 const Home = () => {
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchNews() {
+      try {
+        const data = await newsService.getNews();
+        console.log(data);
+        setNews(data);
+      } catch (error) {
+        console.error("Error fetching news:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchNews();
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+
   return (
     <div className="flex flex-col gap-4 p-6">
       <Header />
-      <ClaimArticles />
+      <ClaimArticles ARTICLES={news} />
     </div>
   );
 };
@@ -40,7 +61,7 @@ function Header() {
   );
 }
 
-function ClaimArticles() {
+function ClaimArticles({ ARTICLES }) {
   const [visibleCount, setVisibleCount] = useState(1);
 
   const handleReadMore = () => {
@@ -77,10 +98,10 @@ function Articles({ article }) {
           <hr className="border-border mt-2 w-[30%]" />
         </div>
 
-        <p className="text-muted-foreground">{article.content}</p>
+        <p className="text-muted-foreground">{article.description}</p>
 
         <img
-          src={article.image}
+          src={article.thumbnail}
           alt={article.title}
           className="h-96 w-full rounded-md object-cover"
         />
