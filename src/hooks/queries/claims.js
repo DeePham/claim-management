@@ -16,6 +16,21 @@ export const useUserClaims = (userId, status) => {
   });
 };
 
+export const useClaims = (allowedStatuses, status) => {
+  return useQuery({
+    queryKey: ["claims", { allowedStatuses, status }],
+    queryFn: async () => {
+      const claims = await claimService.getClaims(allowedStatuses);
+      if (status) {
+        return claims.filter(
+          (claim) => claim.status.toLowerCase() === status.toLowerCase(),
+        );
+      }
+      return claims;
+    },
+  });
+};
+
 export const useCreateClaim = () => {
   const queryClient = useQueryClient();
 
@@ -38,6 +53,17 @@ export const useSaveDraft = () => {
   });
 };
 
+export const useUpdateClaimStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }) => claimService.updateClaimStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["claims"] });
+    },
+  });
+};
+
 export const useUpdateClaim = () => {
   const queryClient = useQueryClient();
 
@@ -54,17 +80,6 @@ export const useDeleteClaim = () => {
 
   return useMutation({
     mutationFn: (id) => claimService.deleteClaim(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["claims"] });
-    },
-  });
-};
-
-export const useSendClaim = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id) => claimService.updateClaimStatus(id, "Pending"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["claims"] });
     },

@@ -10,7 +10,7 @@ import {
   useUserClaims,
   useUpdateClaim,
   useDeleteClaim,
-  useSendClaim,
+  useUpdateClaimStatus,
 } from "@/hooks/queries/claims";
 
 const ViewClaim = () => {
@@ -18,10 +18,7 @@ const ViewClaim = () => {
   const statusParam = searchParams.get("status");
   const { user } = useAuth();
 
-  const {
-    data: claims = [],
-    isLoading,
-  } = useUserClaims(user.uid, statusParam);
+  const { data: claims = [], isLoading } = useUserClaims(user.uid, statusParam);
 
   const [dataSource, setDataSource] = useState(claims);
 
@@ -46,7 +43,7 @@ const ViewClaim = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const updateClaimMutation = useUpdateClaim();
   const deleteClaimMutation = useDeleteClaim();
-  const sendClaimMutation = useSendClaim();
+  const sendClaimMutation = useUpdateClaimStatus();
 
   const handleView = (record) => {
     setSelectedClaim(record);
@@ -76,7 +73,10 @@ const ViewClaim = () => {
 
   const confirmSend = async () => {
     try {
-      await sendClaimMutation.mutateAsync(claimToSend.id);
+      await sendClaimMutation.mutateAsync({
+        id: claimToSend.id,
+        status: "Pending",
+      });
       messageApi.success("Claim sent for approval");
       setSendConfirmVisible(false);
       setClaimToSend(null);
@@ -336,9 +336,7 @@ const ViewClaim = () => {
         okText="Send"
         cancelText="Cancel"
       >
-        <p>
-          Are you sure you want to send this claim for approval?
-        </p>
+        <p>Are you sure you want to send this claim for approval?</p>
       </Modal>
     </div>
   );

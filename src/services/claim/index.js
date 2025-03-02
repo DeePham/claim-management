@@ -25,6 +25,23 @@ export const claimService = {
       throw new Error("Failed to fetch claims");
     }
   },
+
+  async getClaims(allowedStatuses) {
+    try {
+      const q = query(
+        collection(db, "claims"),
+        where("status", "in", allowedStatuses),
+      );
+
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    } catch (error) {
+      throw new Error("Failed to fetch claims");
+    }
+  },
   async createClaim(claimData) {
     try {
       const { projectDuration, ...rest } = claimData;
