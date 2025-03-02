@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { Form, Input, DatePicker, Select, Modal, notification } from "antd";
+import React, {useEffect } from "react";
+import { Form, Input, DatePicker, Select, Modal, message } from "antd";
 import { HEADER_TEXTS } from "@/constants/header";
 import { JOD_RANKS } from "@/constants/common";
-import { projectService } from "@/services/project";
-import { claimService } from "@/services/claim";
 import { calculateWorkingHours } from "@/utils";
+import { useCreateClaim, useSaveDraft } from "@/hooks/queries/claims";
+import { useProjects } from "@/hooks/queries/projects";
 
 const { RangePicker } = DatePicker;
 
@@ -15,30 +15,18 @@ export const ClaimModal = ({
   staffInfo,
   isEditing = false,
   onFinish,
-  onSuccess,
 }) => {
-  const [api, contextHolder] = notification.useNotification();
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
+  const createClaimMutation = useCreateClaim();
+  const saveDraftMutation = useSaveDraft();
+
+  const { data: projects = [], isLoading, error } = useProjects();
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setLoading(true);
-        const projectsData = await projectService.getProjects();
-        setProjects(projectsData);
-      } catch (error) {
-        api.error({
-          message: "Error",
-          description: "Failed to fetch projects",
-          duration: 3,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProjects();
-  }, []);
+    if (error) {
+      messageApi.error("Failed to fetch projects");
+    }
+  }, [error, messageApi]);
 
   const handleCreateClaim = async () => {
     try {
@@ -46,47 +34,28 @@ export const ClaimModal = ({
       const [startDate, endDate] = values.projectDuration;
 
       if (isEditing) {
-        onFinish?.(values);
+        onFinish(values);
       } else {
-        setLoading(true);
         const totalWorking = calculateWorkingHours(startDate, endDate);
 
-        const newClaim = await claimService.createClaim({
+        await createClaimMutation.mutateAsync({
           ...values,
           staffId: staffInfo.uid,
           staffName: staffInfo.name,
           staffDepartment: staffInfo.department,
-          totalWorking,
-        });
-
-        console.log(newClaim);
-
-        setIsModalVisible(false);
-        form.resetFields();
-        api.success({
-          message: "Success",
-          description: "Claim created successfully!",
-          duration: 3,
-        });
-        onSuccess?.({
-          ...newClaim,
-          id: newClaim.id,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           totalWorking,
-          status: "Pending",
         });
+
+        setIsModalVisible(false);
+        form.resetFields();
+        messageApi.success("Claim created successfully!");
       }
     } catch (error) {
       if (!error.errorFields) {
-        api.error({
-          message: "Error",
-          description: "Failed to create claim",
-          duration: 3,
-        });
+        messageApi.error("Failed to create claim");
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -94,42 +63,25 @@ export const ClaimModal = ({
     try {
       const values = await form.getFieldsValue();
       const [startDate, endDate] = values.projectDuration || [];
-      setLoading(true);
 
       const totalWorking =
         startDate && endDate ? calculateWorkingHours(startDate, endDate) : 0;
 
-      const newDraft = await claimService.saveDraft({
+      await saveDraftMutation.mutateAsync({
         ...values,
         staffId: staffInfo.uid,
         staffName: staffInfo.name,
         staffDepartment: staffInfo.department,
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString(),
         totalWorking,
       });
 
       setIsModalVisible(false);
       form.resetFields();
-      api.success({
-        message: "Success",
-        description: "Draft saved successfully!",
-        duration: 3,
-      });
-      onSuccess?.({
-        ...newDraft,
-        id: newDraft.id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        totalWorking,
-        status: "Draft",
-      });
+      messageApi.success("Draft saved successfully!");
     } catch (error) {
-      api.error({
-        message: "Error",
-        description: "Failed to save draft",
-        duration: 3,
-      });
-    } finally {
-      setLoading(false);
+      messageApi.error("Failed to save draft");
     }
   };
 
@@ -144,7 +96,11 @@ export const ClaimModal = ({
           setIsModalVisible(false);
           form.resetFields();
         }}
-        confirmLoading={loading}
+        confirmLoading={
+          isLoading ||
+          createClaimMutation.isPending ||
+          saveDraftMutation.isPending
+        }
         okText={isEditing ? "Save Changes" : HEADER_TEXTS.createClaimButton}
         cancelText={isEditing ? "Cancel" : HEADER_TEXTS.saveDraftButton}
         style={{ top: 40 }}
@@ -155,7 +111,15 @@ export const ClaimModal = ({
         <p className="mb-4 text-gray-500">
           {HEADER_TEXTS.createClaimDescription}
         </p>
-        <Form disabled={loading} form={form} layout="vertical">
+        <Form
+          disabled={
+            isLoading ||
+            createClaimMutation.isPending ||
+            saveDraftMutation.isPending
+          }
+          form={form}
+          layout="vertical"
+        >
           <div className="flex-wrap gap-4">
             <Form.Item
               label="Staff Name"
@@ -200,6 +164,7 @@ export const ClaimModal = ({
               <Select
                 placeholder="Select a project"
                 className="w-full md:w-1/2"
+                loading={isLoading}
               >
                 {projects.map((project) => (
                   <Select.Option key={project.id} value={project.projectName}>

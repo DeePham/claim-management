@@ -6,12 +6,26 @@ import { useSearchParams } from "react-router-dom";
 import { ClaimModal } from "@/components/claimer/ClaimModal";
 import { useAuth } from "@/contexts/AuthProvider";
 import dayjs from "dayjs";
-import { claimService } from "@/services/claim";
+import {
+  useUserClaims,
+  useUpdateClaim,
+  useDeleteClaim,
+  useUpdateClaimStatus,
+} from "@/hooks/queries/claims";
 
 const ViewClaim = () => {
   const [searchParams] = useSearchParams();
   const statusParam = searchParams.get("status");
-  const [dataSource, setDataSource] = useState([]);
+  const { user } = useAuth();
+
+  const { data: claims = [], isLoading } = useUserClaims(user.uid, statusParam);
+
+  const [dataSource, setDataSource] = useState(claims);
+
+  useEffect(() => {
+    setDataSource(claims);
+  }, [claims]);
+
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
@@ -19,40 +33,17 @@ const ViewClaim = () => {
   const [sendConfirmVisible, setSendConfirmVisible] = useState(false);
   const [claimToSend, setClaimToSend] = useState(null);
   const [form] = Form.useForm();
-  const { user } = useAuth();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [messageApi, contextHolder] = message.useMessage();
 
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
   });
 
-  useEffect(() => {
-    const fetchClaims = async () => {
-      try {
-        setLoading(true);
-        const claims = await claimService.getUserClaims(user.uid);
-
-        if (statusParam) {
-          setDataSource(
-            claims.filter(
-              (item) => item.status.toLowerCase() === statusParam.toLowerCase(),
-            ),
-          );
-        } else {
-          setDataSource(claims);
-        }
-      } catch (error) {
-        messageApi.error("Failed to fetch claims");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClaims();
-  }, [statusParam, user.uid, messageApi]);
+  const [messageApi, contextHolder] = message.useMessage();
+  const updateClaimMutation = useUpdateClaim();
+  const deleteClaimMutation = useDeleteClaim();
+  const sendClaimMutation = useUpdateClaimStatus();
 
   const handleView = (record) => {
     setSelectedClaim(record);
@@ -64,12 +55,15 @@ const ViewClaim = () => {
     setDeleteConfirmVisible(true);
   };
 
-  const confirmDelete = () => {
-    setDataSource((prev) =>
-      prev.filter((item) => item.id !== claimToDelete.id),
-    );
-    setDeleteConfirmVisible(false);
-    setClaimToDelete(null);
+  const confirmDelete = async () => {
+    try {
+      await deleteClaimMutation.mutateAsync(claimToDelete.id);
+      messageApi.success("Claim deleted successfully");
+      setDeleteConfirmVisible(false);
+      setClaimToDelete(null);
+    } catch (error) {
+      messageApi.error("Failed to delete claim");
+    }
   };
 
   const handleSend = (record) => {
@@ -77,20 +71,24 @@ const ViewClaim = () => {
     setSendConfirmVisible(true);
   };
 
-  const confirmSend = () => {
-    setDataSource((prev) =>
-      prev.map((item) =>
-        item.id === claimToSend.id ? { ...item, status: "Pending" } : item,
-      ),
-    );
-    setSendConfirmVisible(false);
-    setClaimToSend(null);
+  const confirmSend = async () => {
+    try {
+      await sendClaimMutation.mutateAsync({
+        id: claimToSend.id,
+        status: "Pending",
+      });
+      messageApi.success("Claim sent for approval");
+      setSendConfirmVisible(false);
+      setClaimToSend(null);
+    } catch (error) {
+      messageApi.error("Failed to send claim");
+    }
   };
 
   const handleEdit = (record) => {
     form.setFieldsValue({
       staffName: user.name,
-      staffId: user.id,
+      staffId: user.uid,
       staffDepartment: user.department,
       projectName: record.projectName,
       role: record.role,
@@ -98,27 +96,6 @@ const ViewClaim = () => {
     });
     setSelectedClaim(record);
     setIsEditModalVisible(true);
-  };
-
-  const handleClaimSuccess = (newClaim) => {
-    console.log(newClaim);
-
-    // if (
-    //   statusParam &&
-    //   statusParam.toLowerCase() !== newClaim.status.toLowerCase()
-    // ) {
-    //   return;
-    // }
-
-
-    // setDataSource((prev) => [
-    //   {
-    //     ...newClaim,
-    //     key: newClaim.id,
-    //     projectDuration: [dayjs(newClaim.startDate), dayjs(newClaim.endDate)],
-    //   },
-    //   ...prev,
-    // ]);
   };
 
   const getActionItems = (record) => {
@@ -233,11 +210,33 @@ const ViewClaim = () => {
     },
   ];
 
+  const handleEditFinish = async (values) => {
+    try {
+      const { projectDuration, ...rest } = values;
+      const [startDate, endDate] = projectDuration;
+
+      await updateClaimMutation.mutateAsync({
+        id: selectedClaim.id,
+        ...rest,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+
+      messageApi.success("Claim updated successfully");
+      setIsEditModalVisible(false);
+      setSelectedClaim(null);
+      form.resetFields();
+    } catch (error) {
+      console.log(error);
+      messageApi.error("Failed to update claim");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 p-6">
       {contextHolder}
       <Table
-        loading={loading}
+        loading={isLoading}
         size="small"
         columns={columns}
         dataSource={dataSource}
@@ -305,27 +304,7 @@ const ViewClaim = () => {
         form={form}
         staffInfo={user}
         isEditing={true}
-        onSuccess={handleClaimSuccess}
-        onFinish={(values) => {
-          const { projectDuration, ...rest } = values;
-          const [startDate, endDate] = projectDuration;
-
-          setDataSource((prev) =>
-            prev.map((item) =>
-              item.id === selectedClaim.id
-                ? {
-                    ...item,
-                    ...rest,
-                    startDate: startDate.toISOString(),
-                    endDate: endDate.toISOString(),
-                  }
-                : item,
-            ),
-          );
-          setIsEditModalVisible(false);
-          setSelectedClaim(null);
-          form.resetFields();
-        }}
+        onFinish={handleEditFinish}
       />
 
       {/* Delete Confirmation Modal */}
@@ -341,7 +320,7 @@ const ViewClaim = () => {
         cancelText="Cancel"
         okButtonProps={{ danger: true }}
       >
-        <p>Are you sure you want to delete claim #{claimToDelete?.id}?</p>
+        <p>Are you sure you want to delete this claim?</p>
         <p className="text-muted-foreground">This action cannot be undone.</p>
       </Modal>
 
@@ -357,9 +336,7 @@ const ViewClaim = () => {
         okText="Send"
         cancelText="Cancel"
       >
-        <p>
-          Are you sure you want to send claim #{claimToSend?.id} for approval?
-        </p>
+        <p>Are you sure you want to send this claim for approval?</p>
       </Modal>
     </div>
   );
