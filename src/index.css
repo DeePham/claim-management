@@ -96,3 +96,15 @@ body {
   border-top: 1px solid #eee; 
   padding-top: 20px;
 }
+
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .print-page {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+}

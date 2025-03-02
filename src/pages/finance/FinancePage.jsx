@@ -60,12 +60,12 @@ const FinancePage = () => {
   };
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
+    const printWindow = window.open('', 'ClaimReceipt', 'width=800,height=600');
     const htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Claim Receipt - ${printingClaim.id}</title>
+          <title>Claim Receipt #${printingClaim.id}</title>
           <meta charset="UTF-8">
           <link rel="stylesheet" href="/src/index.css">
         </head>
@@ -126,23 +126,24 @@ const FinancePage = () => {
               </div>
             </div>
           </div>
+          <script>
+            document.title = 'Claim Receipt #${printingClaim.id}';
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 250);
+            };
+            window.onafterprint = function() {
+              window.close();
+            };
+          </script>
         </body>
       </html>
     `;
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
-
-    printWindow.onload = () => {
-      requestAnimationFrame(() => {
-        printWindow.print();
-        printWindow.onafterprint = () => {
-          printWindow.close();
-          setIsPrintModalOpen(false);
-          setPrintingClaim(null);
-        };
-      });
-    };
+    printWindow.focus();
   };
 
   const getActionItems = (record) => {
