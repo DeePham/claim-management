@@ -23,7 +23,7 @@ const ClaimApprovalPage = () => {
     statusParam,
   );
 
-  const [dataSource, setDataSource] = useState(DUMMY_CLAIMS);
+  const [dataSource, setDataSource] = useState([]);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
